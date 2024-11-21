@@ -1,0 +1,14 @@
+{
+  "scripts": {
+    "start": "ts-node .",
+    "build": "rm -rf dist/ && tsc --build"
+  },
+  "dependencies": {
+    "@atproto/api": "^0.13.16",
+    "@aws-sdk/client-s3": "^3.693.0",
+    "@aws-sdk/client-secrets-manager": "^3.693.0",
+    "axios": "^1.7.7",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
+  }
+}
