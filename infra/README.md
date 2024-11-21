@@ -1,14 +1,13 @@
-# Welcome to your CDK TypeScript project
+# BSky Art Bot Infra
 
-This is a blank project for CDK development with TypeScript.
+Builds out the AWS infra for the bot
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+## Services
 
-## Useful commands
+* `S3` to store the raw card information
 
-* `npm run build`   compile typescript to js
-* `npm run watch`   watch for changes and compile
-* `npm run test`    perform the jest unit tests
-* `npx cdk deploy`  deploy this stack to your default AWS account/region
-* `npx cdk diff`    compare deployed stack with current state
-* `npx cdk synth`   emits the synthesized CloudFormation template
+* `Lambda` to periodically update the card data and post to Bluesky
+
+* `Eventbridge` to orchestrate the Cron jobs to execute the lambdas
+
+* `DynamoDB` to store posted card data to prevent posting duplicates
