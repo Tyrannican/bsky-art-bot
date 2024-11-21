@@ -93,11 +93,15 @@ const retrieveCard = async (cards: Card[]): Promise<Card> => {
 
     const { Item } = await dbClient.send(getCommand);
 
-    // Five duplicates is enough to repost
     if (Item && count < 5) {
       count += 1;
       continue;
     }
+
+    // Five duplicates is enough to repost
+    // No need to write in this case
+    if (count >= 5)
+      return card;
 
     const putCommand = new PutCommand({
       TableName: dbName,
