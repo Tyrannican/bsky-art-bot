@@ -3,14 +3,32 @@ import { Construct } from 'constructs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as event from 'aws-cdk-lib/aws-events';
+import * as dynamo from 'aws-cdk-lib/aws-dynamodb';
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
 import path = require('path');
 
 export class InfraStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
+    this.createDynamoDb();
     this.createDataFetcherLambda();
     this.createPosterLambda();
+  }
+
+  createDynamoDb() {
+    new dynamo.TableV2(this, 'ScryfallDuplicateChecker', {
+      tableName: 'scryfall-duplicate-checker',
+      partitionKey: {
+        name: 'name',
+        type: dynamo.AttributeType.STRING
+      },
+      sortKey: {
+        name: 'set',
+        type: dynamo.AttributeType.STRING
+      },
+      billing: dynamo.Billing.onDemand(),
+      removalPolicy: cdk.RemovalPolicy.DESTROY
+    });
   }
 
   createDataFetcherLambda() {
@@ -74,6 +92,8 @@ export class InfraStack extends cdk.Stack {
         'secretsmanager:GetSecretValue',
         's3:GetObject',
         'cloudwatch:*',
+        'dynamodb:GetItem',
+        'dynamodb:PutItem'
       ],
       effect: iam.Effect.ALLOW
     }));
@@ -97,7 +117,8 @@ export class InfraStack extends cdk.Stack {
       role: posterRole,
       environment: {
         BUCKET: 'muspelheim',
-        BUCKET_KEY: 'scryfall-oracle-cards.json'
+        BUCKET_KEY: 'scryfall-oracle-cards.json',
+        DB_NAME: 'scryfall-duplicate-checker',
       },
       memorySize: 256,
       functionName: 'bsky-poster-fn',
