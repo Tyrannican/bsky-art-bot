@@ -1,6 +1,8 @@
 import { AtpAgent, RichText } from '@atproto/api';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import axios from 'axios';
 import process from 'process';
 
@@ -10,6 +12,8 @@ const agent = new AtpAgent({
 
 const s3Client = new S3Client({});
 const secretClient = new SecretsManagerClient({ region: 'eu-west-1' });
+const dynamoDbClient = new DynamoDBClient({ region: 'eu-west-1' });
+const dbClient = DynamoDBDocumentClient.from(dynamoDbClient);
 
 type Card = {
   name: string,
@@ -71,10 +75,48 @@ const postToBluesky = async (image: Buffer, postText: RichText, altText: string)
   });
 };
 
+// TODO: The longer this goes, the worse this gets
+// But it will do for now
+const retrieveCard = async (cards: Card[]): Promise<Card> => {
+  let count = 0;
+  const dbName = process.env.DB_NAME;
+
+  while (true) {
+    const card = cards[Math.floor(Math.random() * cards.length)];
+    const getCommand = new GetCommand({
+      TableName: dbName,
+      Key: {
+        name: card.name,
+        set: card.set_name
+      }
+    });
+
+    const { Item } = await dbClient.send(getCommand);
+
+    // Five duplicates is enough to repost
+    if (Item && count < 5) {
+      count += 1;
+      continue;
+    }
+
+    const putCommand = new PutCommand({
+      TableName: dbName,
+      Item: {
+        name: card.name,
+        set: card.set_name
+      }
+    });
+    await dbClient.send(putCommand);
+
+    return card;
+  }
+};
+
 export const handler = async (event: any, context: object = {}) => {
   const cards = await downloadCardData();
 
-  const card = cards[Math.floor(Math.random() * cards.length)];
+  // Gets a card by checking if it's been posted before
+  const card = await retrieveCard(cards);
   const text = new RichText({
     text: `${card.name} (${card.set_name})\nArtist: ${card.artist}\n\n${card.flavor_text}\n\n#magicthegathering #mtg`
   });
