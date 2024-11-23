@@ -26,6 +26,33 @@ type Card struct {
 	Artist      string `json:"artist,omitempty"`
 }
 
+func (c *Card) isInvalid() bool {
+	switch c.Set {
+	case "Unglued":
+		return true
+	case "Unhinged":
+		return true
+	case "Unstable":
+		return true
+	case "Unsanctioned":
+		return true
+	case "Unfinity":
+		return true
+	default:
+		break
+	}
+
+	if c.Set == "Unknown Event" {
+		return true
+	}
+
+	if c.FlavourText == "" || c.Images.ArtCrop == "" || c.Artist == "" {
+		return true
+	}
+
+	return false
+}
+
 const URL = "https://api.scryfall.com/bulk-data"
 
 func downloadData(url string) ([]byte, error) {
@@ -70,7 +97,7 @@ func downloadCardData(entry BulkEntry) []Card {
 func filterCards(cards []Card) []Card {
 	filtered := make([]Card, 0)
 	for _, card := range cards {
-		if invalidCard(card) {
+		if card.isInvalid() {
 			continue
 		}
 		filtered = append(filtered, card)
@@ -78,29 +105,6 @@ func filterCards(cards []Card) []Card {
 
 	log.Println("filtered cards")
 	return filtered
-}
-
-func invalidCard(card Card) bool {
-	switch card.Set {
-	case "Unglued":
-		return true
-	case "Unhinged":
-		return true
-	case "Unstable":
-		return true
-	case "Unsanctioned":
-		return true
-	case "Unfinity":
-		return true
-	default:
-		break
-	}
-
-	if card.FlavourText == "" || card.Images.ArtCrop == "" {
-		return true
-	}
-
-	return false
 }
 
 func Download() []Card {
