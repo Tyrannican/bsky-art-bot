@@ -89,7 +89,7 @@ func downloadCardData(entry BulkEntry) []Card {
 		log.Fatalf("unable to deserialize card list: %v\n", err)
 	}
 
-	log.Println("downloaded oracle card data")
+	log.Printf("downloaded oracle card data. %d oracle cards\n", len(cards))
 
 	return filterCards(cards)
 }
@@ -103,7 +103,7 @@ func filterCards(cards []Card) []Card {
 		filtered = append(filtered, card)
 	}
 
-	log.Println("filtered cards")
+	log.Printf("filtered cards. %d unique cards\n", len(filtered))
 	return filtered
 }
 

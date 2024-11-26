@@ -128,4 +128,6 @@ export const handler = async (event: any, context: object = {}) => {
 
   const imgData = await downloadCardImage(card);
   await postToBluesky(imgData, text, altText);
+
+  console.log(`posted card '${card.name}' from set '${card.set_name}'`);
 }
