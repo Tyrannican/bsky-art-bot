@@ -1,10 +1,12 @@
 #!/bin/bash
 
 build_datafetcher () {
-  cd scryfall-datafetcher
-  GOOS=linux GOARCH=arm64 go build -o bootstrap main.go
+  cd datafetcher
+  mkdir build
+  CARGO_TARGET_DIR=./build cargo lambda build --release --arm64
+  mv build/lambda/datafetcher/bootstrap .
   zip ../dist/scryfall-datafetcher.zip bootstrap
-  rm bootstrap
+  rm -r build bootstrap
   cd ..
 }
 
@@ -33,4 +35,4 @@ deploy () {
 }
 
 build
-deploy
+# deploy
