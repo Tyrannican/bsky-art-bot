@@ -2,3 +2,4 @@ dist/
 node_modules/
 cdk.out
 bootstrap
+.rustc_info.json
