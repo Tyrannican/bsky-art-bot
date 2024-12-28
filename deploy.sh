@@ -35,4 +35,4 @@ deploy () {
 }
 
 build
-# deploy
+deploy
