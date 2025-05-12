@@ -56,7 +56,7 @@ impl Card {
     }
 }
 
-async fn download_data(url: &str) -> Result<Vec<u8>> {
+async fn download_data<T: serde::de::DeserializeOwned>(url: &str) -> Result<T> {
     let client = Client::new();
     let data = client
         .get(url)
@@ -64,16 +64,16 @@ async fn download_data(url: &str) -> Result<Vec<u8>> {
         .header("user-agent", "reqwest")
         .send()
         .await?
-        .bytes()
+        .json::<T>()
         .await?;
 
-    Ok(data.to_vec())
+    Ok(data)
 }
 
 pub async fn download() -> Result<Vec<Card>> {
-    let bulk: BulkData = serde_json::from_slice(&download_data(URL).await?)?;
+    let bulk = download_data::<BulkData>(URL).await?;
     tracing::info!("downloaded bulk card data");
-    let cards: Vec<Card> = serde_json::from_slice(&download_data(&bulk.data[0].url).await?)?;
+    let cards = download_data::<Vec<Card>>(&bulk.data[0].url).await?;
     let cards_len = cards.len();
     let filtered_cards: Vec<Card> = cards.into_iter().filter(|c| !c.is_invalid()).collect();
     tracing::info!(
