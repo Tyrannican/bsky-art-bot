@@ -16,7 +16,8 @@ build_poster () {
   cp package.json dist/
   cd dist/
   npm install --omit=dev
-  zip -9 -r ../../dist/bsky-poster.zip *
+  npm run minify
+  zip -9 -r ../../dist/bsky-poster.zip index.js
   cd ../
   rm -rf dist
   cd ../
@@ -32,6 +33,7 @@ deploy () {
   cd infra
   npm run cdk deploy 
   cd ..
+  rm -rf dist/
 }
 
 build
