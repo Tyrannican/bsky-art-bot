@@ -24,6 +24,7 @@ pub struct Card {
     set_name: String,
     flavor_text: Option<String>,
     artist: Option<String>,
+    content_warning: Option<bool>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -33,6 +34,10 @@ struct CardImageData {
 
 impl Card {
     pub fn is_invalid(&self) -> bool {
+        if self.content_warning.is_some() {
+            return true;
+        }
+
         match self.set_name.as_str() {
             "Unglued" | "Unhinged" | "Unsanctioned" | "Unfinity" | "Unstable" => return true,
             _ => {}
