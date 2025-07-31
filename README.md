@@ -2,4 +2,4 @@
 
 A simple bot that posts Magic: the Gathering art on Bluesky.
 
-[@mtgartbot.bsky.social](https://bsky.app/profile/mtgartbot.bsky.social) on Bluesky
+[@moxarcana.com](https://bsky.app/profile/moxarcana.com) on Bluesky
