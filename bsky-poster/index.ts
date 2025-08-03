@@ -119,11 +119,19 @@ const retrieveCard = async (cards: Card[]): Promise<Card> => {
 export const handler = async (event: any, context: object = {}) => {
   const cards = await downloadCardData();
 
-  // Gets a card by checking if it's been posted before
-  const card = await retrieveCard(cards);
-  const text = new RichText({
-    text: `${card.name} (${card.set_name})\nArtist: ${card.artist}\n\n${card.flavor_text}\n\n#magicthegathering #mtg`
-  });
+
+  // 300 characters is the max size of a BSky post so keep looping
+  // if we get one longer than that
+  let card: Card;
+  let text: RichText;
+
+  do {
+    card = await retrieveCard(cards);
+    text = new RichText({
+      text: `${card.name} (${card.set_name})\nArtist: ${card.artist}\n\n${card.flavor_text}\n\n#magicthegathering #mtg`
+    });
+  } while (text.length > 300);
+
   const altText = `Art for the Magic: the Gathering card '${card.name}' from the set '${card.set_name}' by the artist '${card.artist}'`;
 
   const imgData = await downloadCardImage(card);
