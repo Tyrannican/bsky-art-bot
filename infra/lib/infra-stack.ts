@@ -122,7 +122,7 @@ export class InfraStack extends cdk.Stack {
       },
       memorySize: 256,
       functionName: 'bsky-poster-fn',
-      timeout: cdk.Duration.seconds(15)
+      timeout: cdk.Duration.seconds(30)
     });
 
     posterScheduleRule.addTarget(new LambdaFunction(fn, {
