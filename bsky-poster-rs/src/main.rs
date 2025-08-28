@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use anyhow::Result;
 use aws_config::BehaviorVersion;
+use aws_sdk_dynamodb::Client as DynamoClient;
+use aws_sdk_dynamodb::types::AttributeValue;
 use aws_sdk_s3::Client as S3Client;
 use aws_sdk_secretsmanager::Client as SecretsManagerClient;
 use aws_types::SdkConfig;
@@ -27,16 +29,8 @@ struct Card {
     artist: String,
 }
 
-fn parse_json_str<T: serde::de::DeserializeOwned>(input: &str) -> Result<T> {
-    Ok(serde_json::from_str(input)?)
-}
-
-fn parse_json_slice<T: serde::de::DeserializeOwned>(input: &[u8]) -> Result<T> {
-    Ok(serde_json::from_slice(input)?)
-}
-
 async fn load_bsky_credentials(config: &SdkConfig) -> Result<BSkyCredentials> {
-    let client = SecretsManagerClient::new(&config);
+    let client = SecretsManagerClient::new(config);
 
     let resp = client
         .get_secret_value()
@@ -49,11 +43,11 @@ async fn load_bsky_credentials(config: &SdkConfig) -> Result<BSkyCredentials> {
         std::process::exit(1);
     };
 
-    Ok(parse_json_str(secret)?)
+    Ok(serde_json::from_str(secret)?)
 }
 
 async fn download_card_data(config: &SdkConfig) -> Result<Vec<Card>> {
-    let client = S3Client::new(&config);
+    let client = S3Client::new(config);
     let bucket = std::env::var("BUCKET")?;
     let key = std::env::var("BUCKET_KEY")?;
 
@@ -63,7 +57,44 @@ async fn download_card_data(config: &SdkConfig) -> Result<Vec<Card>> {
         std::process::exit(1);
     };
 
-    Ok(parse_json_slice(stream)?)
+    Ok(serde_json::from_slice(stream)?)
+}
+
+async fn retrieve_card<'a>(cards: &'a [Card], config: &SdkConfig) -> Result<&'a Card> {
+    let mut iteration = 0;
+    let db_name = std::env::var("DB_NAME")?;
+    let client = DynamoClient::new(config);
+
+    loop {
+        let idx: usize = rand::random_range(0..cards.len());
+        let card = &cards[idx];
+        let resp = client
+            .get_item()
+            .table_name(&db_name)
+            .key("name", AttributeValue::S(card.name.to_owned()))
+            .key("set", AttributeValue::S(card.set_name.to_owned()))
+            .send()
+            .await?;
+
+        if resp.item().is_some() && iteration < 5 {
+            iteration += 1;
+            continue;
+        }
+
+        if iteration >= 5 {
+            return Ok(card);
+        }
+
+        client
+            .put_item()
+            .table_name(&db_name)
+            .item("name", AttributeValue::S(card.name.to_owned()))
+            .item("set", AttributeValue::S(card.set_name.to_owned()))
+            .send()
+            .await?;
+
+        return Ok(card);
+    }
 }
 
 async fn handler(_event: LambdaEvent<serde_json::Value>) -> Result<(), Error> {
@@ -72,6 +103,7 @@ async fn handler(_event: LambdaEvent<serde_json::Value>) -> Result<(), Error> {
     let BSkyCredentials { username, password } = load_bsky_credentials(&config).await?;
     let agent = BskyAgent::builder().build().await?;
     agent.login(&username, &password).await?;
+    let card = retrieve_card(&cards, &config).await?;
     tracing::info!("running lambda");
 
     Ok(())

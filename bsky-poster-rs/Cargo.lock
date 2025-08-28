@@ -752,6 +752,7 @@ dependencies = [
  "aws-types",
  "bsky-sdk",
  "lambda_runtime",
+ "rand",
  "reqwest",
  "serde",
  "serde_json",
