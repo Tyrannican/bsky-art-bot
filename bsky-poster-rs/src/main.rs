@@ -3,10 +3,7 @@ use std::sync::OnceLock;
 use anyhow::Result;
 use atrium_api::{
     app::bsky::{
-        embed::{
-            external::Main,
-            images::{Image, ImageData, MainData},
-        },
+        embed::images::{ImageData, MainData},
         feed::post::{RecordData, RecordEmbedRefs},
     },
     types::string::Datetime,
@@ -110,7 +107,7 @@ async fn download_card_data(client: &S3Client) -> Result<Vec<Card>> {
     Ok(serde_json::from_slice(stream)?)
 }
 
-async fn posted_before<'a>(db_name: &str, card: &'a Card, client: &DynamoClient) -> Result<bool> {
+async fn posted_before(db_name: &str, card: &Card, client: &DynamoClient) -> Result<bool> {
     let resp = client
         .get_item()
         .table_name(db_name)
@@ -148,10 +145,10 @@ async fn retrieve_card<'a>(cards: &'a [Card], client: &DynamoClient) -> Result<&
     Ok(card)
 }
 
-async fn create_image_embed<'a>(
+async fn create_image_embed(
     agent: &BskyAgent,
     client: &HttpClient,
-    card: &'a Card,
+    card: &Card,
 ) -> Result<ImageData> {
     let ImageUri::ArtCrop(url) = &card.image_uris;
     let image = client.get(url).send().await?.bytes().await?;
@@ -173,11 +170,19 @@ async fn create_image_embed<'a>(
 }
 
 async fn post_to_bluesky(agent: BskyAgent, image: ImageData, post_text: RichText) -> Result<()> {
+    let image_embed =
+        atrium_api::types::Union::Refs(RecordEmbedRefs::AppBskyEmbedImagesMain(Box::new(
+            MainData {
+                images: vec![image.into()],
+            }
+            .into(),
+        )));
+
     let post = RecordData {
         created_at: Datetime::now(),
         text: post_text.text,
         facets: post_text.facets,
-        embed: None, // TODO: Figure this out
+        embed: Some(image_embed),
         entities: None,
         labels: None,
         langs: None,
@@ -190,25 +195,34 @@ async fn post_to_bluesky(agent: BskyAgent, image: ImageData, post_text: RichText
     Ok(())
 }
 
+async fn select_appropriate_card<'a>(
+    cards: &'a [Card],
+    client: &DynamoClient,
+) -> Result<(&'a Card, String)> {
+    let mut card = retrieve_card(cards, client).await?;
+    let mut text = card.text();
+
+    while text.len() > 300 {
+        card = retrieve_card(cards, client).await?;
+        text = card.text();
+    }
+
+    Ok((card, text))
+}
+
 async fn handler(_event: LambdaEvent<serde_json::Value>) -> Result<(), Error> {
     let config = aws_config::load_defaults(BehaviorVersion::v2025_08_07()).await;
     let clients = CLIENTS.get_or_init(|| ClientHandler::new(&config));
     let cards = download_card_data(&clients.s3).await?;
-    let BSkyCredentials { username, password } =
-        load_bsky_credentials(&clients.secrets_manager).await?;
-    let mut card = retrieve_card(&cards, &clients.dynamo).await?;
-    let mut text = card.text();
-
-    while text.len() > 300 {
-        card = retrieve_card(&cards, &clients.dynamo).await?;
-        text = card.text();
-    }
-
+    let (card, text) = select_appropriate_card(&cards, &clients.dynamo).await?;
     let text = RichText::new_with_detect_facets(text).await?;
 
+    let BSkyCredentials { username, password } =
+        load_bsky_credentials(&clients.secrets_manager).await?;
     let agent = BskyAgent::builder().build().await?;
     agent.login(&username, &password).await?;
-    let img_blob = create_image_embed(&agent, &clients.http, &card);
+    let img_embed = create_image_embed(&agent, &clients.http, card).await?;
+    post_to_bluesky(agent, img_embed, text).await?;
 
     tracing::info!("running lambda");
 
