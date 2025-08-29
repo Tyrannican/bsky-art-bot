@@ -10,6 +10,16 @@ build_datafetcher () {
   cd ..
 }
 
+build_rust_poster () {
+  cd bsky-poster-rs 
+  mkdir build
+  CARGO_TARGET_DIR=./build cargo lambda build --release --arm64
+  mv build/lambda/bsky-poster-rs/bootstrap .
+  zip ../dist/bsky-poster-rs.zip bootstrap
+  rm -r build bootstrap
+  cd ..
+}
+
 build_poster () {
   cd bsky-poster
   npm run build
@@ -26,6 +36,7 @@ build_poster () {
 build () {
   mkdir -p dist
   build_datafetcher
+  build_rust_poster
   build_poster
 }
 
@@ -37,4 +48,4 @@ deploy () {
 }
 
 build
-deploy
+# deploy
