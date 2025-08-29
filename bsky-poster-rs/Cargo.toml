@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.99"
+atrium-api = "0.25.5"
 aws-config = "1.8.5"
 aws-sdk-dynamodb = "1.90.0"
 aws-sdk-s3 = "1.103.0"
