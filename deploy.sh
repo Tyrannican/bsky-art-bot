@@ -20,6 +20,20 @@ build_rust_poster () {
   cd ..
 }
 
+build_lambdas () {
+    cd lambdas
+    mkdir -p build
+    CARGO_TARGET_DIR=./build cargo lambda build --workspace --release --arm64
+    mv build/lambda/datafetcher/bootstrap .
+    zip ../dist/scryfall-datafetcher.zip bootstrap
+    rm bootstrap
+
+    mv build/lambda/bsky-poster-rs/bootstrap .
+    zip ../dist/bsky-poster-rs.zip bootstrap
+    rm -r build bootstrap
+    cd ..
+}
+
 build_poster () {
   cd bsky-poster
   npm run build
@@ -35,9 +49,10 @@ build_poster () {
 
 build () {
   mkdir -p dist
-  build_datafetcher
-  build_rust_poster
-  build_poster
+  # build_datafetcher
+  # build_rust_poster
+  # build_poster
+  build_lambdas
 }
 
 deploy () {
