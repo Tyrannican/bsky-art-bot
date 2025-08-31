@@ -73,6 +73,16 @@ impl Card {
     }
 }
 
+impl std::fmt::Display for Card {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} ({}) - '{}'",
+            self.name, self.set_name, self.flavor_text
+        )
+    }
+}
+
 #[derive(Deserialize)]
 enum ImageUri {
     #[serde(rename = "art_crop")]
@@ -211,18 +221,20 @@ async fn handler(_event: LambdaEvent<serde_json::Value>) -> Result<(), Error> {
     let config = aws_config::load_defaults(BehaviorVersion::v2025_08_07()).await;
     let clients = CLIENTS.get_or_init(|| ClientHandler::new(&config));
     let cards = download_card_data(&clients.s3).await?;
+    tracing::info!("successfully retrieved card dataset");
     let (card, text) = select_appropriate_card(&cards, &clients.dynamo).await?;
+    tracing::info!("selected card - {card}");
     let text = RichText::new_with_detect_facets(text).await?;
 
     let BSkyCredentials { username, password } =
         load_bsky_credentials(&clients.secrets_manager).await?;
     let agent = BskyAgent::builder().build().await?;
     agent.login(&username, &password).await?;
+    tracing::info!("logged into bsky successfully");
     let img_embed = create_image_embed(&agent, &clients.http, card).await?;
     post_to_bluesky(agent, img_embed, text).await?;
 
-    tracing::info!("running lambda");
-
+    tracing::info!("successfully sent post");
     Ok(())
 }
 
