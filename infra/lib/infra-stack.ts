@@ -13,6 +13,7 @@ export class InfraStack extends cdk.Stack {
     this.createDynamoDb();
     this.createDataFetcherLambda();
     this.createPosterLambda();
+    this.createRustPosterLambda();
   }
 
   createDynamoDb() {
@@ -77,6 +78,44 @@ export class InfraStack extends cdk.Stack {
     }));
   }
 
+  createRustPosterLambda() {
+    const posterRole = new iam.Role(this, 'BskyRustPosterRole', {
+      roleName: 'bsky-poster-rust-role',
+      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com')
+    });
+
+    posterRole.addToPolicy(new iam.PolicyStatement({
+      resources: ['*'],
+      actions: [
+        'logs:CreateLogGroup',
+        'logs:CreateLogStream',
+        'logs:PutLogEvents',
+        'secretsmanager:GetSecretValue',
+        's3:GetObject',
+        'cloudwatch:*',
+        'dynamodb:GetItem',
+        'dynamodb:PutItem'
+      ],
+      effect: iam.Effect.ALLOW
+    }));
+
+    new lambda.Function(this, 'BskyPosterRustLambda', {
+      runtime: lambda.Runtime.PROVIDED_AL2023,
+      architecture: lambda.Architecture.ARM_64,
+      handler: 'bootstrap',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../dist/bsky-poster-rs.zip')),
+      role: posterRole,
+      environment: {
+        BUCKET: 'muspelheim',
+        BUCKET_KEY: 'scryfall-oracle-cards.json',
+        DB_NAME: 'scryfall-duplicate-checker',
+      },
+      memorySize: 256,
+      functionName: 'bsky-poster-rust-fn',
+      timeout: cdk.Duration.seconds(30)
+    });
+  }
+
   createPosterLambda() {
     const posterRole = new iam.Role(this, 'BskyPosterRole', {
       roleName: 'bsky-poster-role',
@@ -111,17 +150,16 @@ export class InfraStack extends cdk.Stack {
     });
 
     const fn = new lambda.Function(this, 'BskyPosterLambda', {
-      runtime: lambda.Runtime.PROVIDED_AL2023,
-      architecture: lambda.Architecture.ARM_64,
-      handler: 'bootstrap',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../dist/bsky-poster-rs.zip')),
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../dist/bsky-poster.zip')),
       role: posterRole,
       environment: {
         BUCKET: 'muspelheim',
         BUCKET_KEY: 'scryfall-oracle-cards.json',
         DB_NAME: 'scryfall-duplicate-checker',
       },
-      memorySize: 1024,
+      memorySize: 256,
       functionName: 'bsky-poster-fn',
       timeout: cdk.Duration.seconds(30)
     });

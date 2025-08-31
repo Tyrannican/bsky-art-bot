@@ -51,7 +51,7 @@ build () {
   mkdir -p dist
   # build_datafetcher
   # build_rust_poster
-  # build_poster
+  build_poster
   build_lambdas
 }
 

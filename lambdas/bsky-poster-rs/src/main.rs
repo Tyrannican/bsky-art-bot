@@ -99,12 +99,9 @@ async fn download_card_data(client: &S3Client) -> Result<Vec<Card>> {
     let key = std::env::var("BUCKET_KEY")?;
 
     let card_data = client.get_object().bucket(bucket).key(key).send().await?;
-    let Some(stream) = card_data.body().bytes() else {
-        tracing::error!("no bytes in object bytestream");
-        std::process::exit(1);
-    };
+    let stream = card_data.body.collect().await?.into_bytes();
 
-    Ok(serde_json::from_slice(stream)?)
+    Ok(serde_json::from_slice(&stream)?)
 }
 
 async fn posted_before(db_name: &str, card: &Card, client: &DynamoClient) -> Result<bool> {
