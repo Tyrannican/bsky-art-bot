@@ -10,23 +10,23 @@ build_datafetcher () {
   cd ..
 }
 
-build_poster () {
-  cd bsky-poster
-  npm run build
-  cp package.json dist/
-  cd dist/
-  npm install --omit=dev
-  npm run minify
-  zip -9 -r ../../dist/bsky-poster.zip index.js
-  cd ../
-  rm -rf dist
-  cd ../
+build_lambdas () {
+    cd lambdas
+    mkdir -p build
+    CARGO_TARGET_DIR=./build cargo lambda build --workspace --release --arm64
+    mv build/lambda/datafetcher/bootstrap .
+    zip ../dist/scryfall-datafetcher.zip bootstrap
+    rm bootstrap
+
+    mv build/lambda/bsky-poster-rs/bootstrap .
+    zip ../dist/bsky-poster.zip bootstrap
+    rm -r build bootstrap
+    cd ..
 }
 
 build () {
   mkdir -p dist
-  build_datafetcher
-  build_poster
+  build_lambdas
 }
 
 deploy () {

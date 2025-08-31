@@ -111,8 +111,9 @@ export class InfraStack extends cdk.Stack {
     });
 
     const fn = new lambda.Function(this, 'BskyPosterLambda', {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      handler: 'index.handler',
+      runtime: lambda.Runtime.PROVIDED_AL2023,
+      architecture: lambda.Architecture.ARM_64,
+      handler: 'bootstrap',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../dist/bsky-poster.zip')),
       role: posterRole,
       environment: {
