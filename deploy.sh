@@ -63,4 +63,4 @@ deploy () {
 }
 
 build
-# deploy
+deploy

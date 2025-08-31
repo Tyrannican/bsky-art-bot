@@ -111,16 +111,17 @@ export class InfraStack extends cdk.Stack {
     });
 
     const fn = new lambda.Function(this, 'BskyPosterLambda', {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../dist/bsky-poster.zip')),
+      runtime: lambda.Runtime.PROVIDED_AL2023,
+      architecture: lambda.Architecture.ARM_64,
+      handler: 'bootstrap',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../dist/bsky-poster-rs.zip')),
       role: posterRole,
       environment: {
         BUCKET: 'muspelheim',
         BUCKET_KEY: 'scryfall-oracle-cards.json',
         DB_NAME: 'scryfall-duplicate-checker',
       },
-      memorySize: 256,
+      memorySize: 1024,
       functionName: 'bsky-poster-fn',
       timeout: cdk.Duration.seconds(30)
     });
