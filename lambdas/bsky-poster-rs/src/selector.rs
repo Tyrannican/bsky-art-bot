@@ -7,6 +7,8 @@ use aws_sdk_s3::Client as S3Client;
 use lambda_runtime::tracing;
 use serde::Deserialize;
 
+const CHECK_ITERATIONS: usize = 5;
+
 #[derive(Clone, Deserialize)]
 pub struct Card {
     pub name: String,
@@ -85,9 +87,11 @@ async fn retrieve_card<'a>(cards: &'a [Card], client: &DynamoClient) -> Result<&
     let mut idx: usize = rand::random_range(0..total_cards);
     let mut card = &cards[idx];
 
-    while posted_before(&db_name, card, client).await? {
-        idx = rand::random_range(0..total_cards);
-        card = &cards[idx];
+    for _ in 0..CHECK_ITERATIONS {
+        if posted_before(&db_name, card, client).await? {
+            idx = rand::random_range(0..total_cards);
+            card = &cards[idx];
+        }
     }
 
     Ok(card)
