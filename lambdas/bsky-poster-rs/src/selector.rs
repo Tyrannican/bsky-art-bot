@@ -7,6 +7,8 @@ use aws_sdk_s3::Client as S3Client;
 use lambda_runtime::tracing;
 use serde::Deserialize;
 
+// Number of times to check if cards have been posted
+// If above this number, post regardless
 const CHECK_ITERATIONS: usize = 5;
 
 #[derive(Clone, Deserialize)]
@@ -91,6 +93,8 @@ async fn retrieve_card<'a>(cards: &'a [Card], client: &DynamoClient) -> Result<&
         if posted_before(&db_name, card, client).await? {
             idx = rand::random_range(0..total_cards);
             card = &cards[idx];
+        } else {
+            break;
         }
     }
 

@@ -23,5 +23,9 @@ deploy:
     cd infra && npm run cdk deploy
     rm -rf dist/
 
+# Remove the dist folder
 _dist:
     mkdir -p dist
+
+# Build and deploy
+all: build deploy
