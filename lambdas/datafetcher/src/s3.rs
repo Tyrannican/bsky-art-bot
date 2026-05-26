@@ -1,7 +1,7 @@
 use anyhow::Result;
 use aws_sdk_s3::{primitives::ByteStream, Client};
 
-use crate::scryfall::Card;
+use scryone::objects::Card;
 
 async fn load_client() -> Client {
     let config = aws_config::load_from_env().await;
