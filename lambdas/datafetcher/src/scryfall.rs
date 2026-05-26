@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use lambda_runtime::tracing;
 
 use scryone::{
@@ -24,9 +24,14 @@ pub async fn download() -> Result<Vec<Card>> {
         .data_type(BulkDataId::Type(BulkDataType::OracleCards))
         .build()?;
 
-    let result = client.get(req).await?;
+    let result = client.get(req).await.context("retrieving bulk metadata")?;
     tracing::info!("download bulk metadata");
-    let cards: Vec<Card> = client.call(result.download_uri).await?;
+
+    let cards: Vec<Card> = client
+        .call(result.download_uri)
+        .await
+        .context("downloading bulk card data")?;
+
     tracing::info!("downloaded card data");
     let cards_len = cards.len();
     let filtered_cards: Vec<Card> = cards.into_iter().filter(is_invalid).collect();

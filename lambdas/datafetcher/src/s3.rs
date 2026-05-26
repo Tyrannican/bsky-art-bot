@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use aws_sdk_s3::{primitives::ByteStream, Client};
 
 use scryone::objects::Card;
@@ -10,7 +10,7 @@ async fn load_client() -> Client {
 
 pub async fn upload_cards(cards: Vec<Card>) -> Result<()> {
     let client = load_client().await;
-    let pretty = serde_json::to_string_pretty(&cards)?;
+    let pretty = serde_json::to_string_pretty(&cards).context("serialising bulk card data")?;
     let body = ByteStream::from(pretty.into_bytes());
     client
         .put_object()
