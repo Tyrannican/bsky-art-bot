@@ -5,22 +5,49 @@ use aws_sdk_dynamodb::Client as DynamoClient;
 use aws_sdk_dynamodb::types::AttributeValue;
 use aws_sdk_s3::Client as S3Client;
 use lambda_runtime::tracing;
+use scryone::objects::Card;
 use serde::Deserialize;
+use url::Url;
 
 // Number of times to check if cards have been posted
 // If above this number, post regardless
 const CHECK_ITERATIONS: usize = 5;
 
 #[derive(Clone, Deserialize)]
-pub struct Card {
+pub struct DisplayCard {
     pub name: String,
-    pub image_uris: ImageUri,
+    pub art_crop: Url,
     pub set_name: String,
     pub flavor_text: String,
     pub artist: String,
 }
 
-impl Card {
+impl DisplayCard {
+    pub fn from_scryfall_card(card: &Card) -> Self {
+        let flavor_text = card
+            .flavor_text
+            .as_ref()
+            .expect("flavor text should be present due to filters");
+
+        let artist = card
+            .artist
+            .as_ref()
+            .expect("artist should be present due to filters");
+
+        let image_uris = card
+            .image_uris
+            .as_ref()
+            .expect("image uris should be present due to filters");
+
+        Self {
+            name: card.name.clone(),
+            set_name: card.set_name.clone(),
+            flavor_text: flavor_text.to_string(),
+            artist: artist.to_string(),
+            art_crop: image_uris.art_crop.clone(),
+        }
+    }
+
     pub fn text(&self) -> String {
         format!(
             "{} ({})\nArtist: {}\n\n{}\n\n#magicthegathering #mtg",
@@ -36,7 +63,7 @@ impl Card {
     }
 }
 
-impl std::fmt::Display for Card {
+impl std::fmt::Display for DisplayCard {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -46,22 +73,19 @@ impl std::fmt::Display for Card {
     }
 }
 
-#[derive(Clone, Deserialize)]
-pub enum ImageUri {
-    #[serde(rename = "art_crop")]
-    ArtCrop(String),
-}
-
-pub async fn select_card(clients: &ClientHandler) -> Result<Card> {
+pub async fn select_card(clients: &ClientHandler) -> Result<DisplayCard> {
     let cards = download_card_data(&clients.s3).await?;
     tracing::info!("successfully retrieved card dataset");
     let card = select_appropriate_card(&cards, &clients.dynamo).await?;
     tracing::info!("selected card - {card}");
 
-    Ok(card.clone())
+    Ok(card)
 }
 
-async fn select_appropriate_card<'a>(cards: &'a [Card], client: &DynamoClient) -> Result<&'a Card> {
+async fn select_appropriate_card<'a>(
+    cards: &'a [Card],
+    client: &DynamoClient,
+) -> Result<DisplayCard> {
     let mut card = retrieve_card(cards, client).await?;
     let mut text = card.text();
 
@@ -83,16 +107,16 @@ async fn download_card_data(client: &S3Client) -> Result<Vec<Card>> {
     Ok(serde_json::from_slice(&stream)?)
 }
 
-async fn retrieve_card<'a>(cards: &'a [Card], client: &DynamoClient) -> Result<&'a Card> {
+async fn retrieve_card<'a>(cards: &'a [Card], client: &DynamoClient) -> Result<DisplayCard> {
     let db_name = std::env::var("DB_NAME")?;
     let total_cards = cards.len();
     let mut idx: usize = rand::random_range(0..total_cards);
-    let mut card = &cards[idx];
+    let mut card = DisplayCard::from_scryfall_card(&cards[idx]);
 
     for _ in 0..CHECK_ITERATIONS {
-        if posted_before(&db_name, card, client).await? {
+        if posted_before(&db_name, &card, client).await? {
             idx = rand::random_range(0..total_cards);
-            card = &cards[idx];
+            card = DisplayCard::from_scryfall_card(&cards[idx]);
         } else {
             break;
         }
@@ -101,7 +125,7 @@ async fn retrieve_card<'a>(cards: &'a [Card], client: &DynamoClient) -> Result<&
     Ok(card)
 }
 
-async fn posted_before(db_name: &str, card: &Card, client: &DynamoClient) -> Result<bool> {
+async fn posted_before(db_name: &str, card: &DisplayCard, client: &DynamoClient) -> Result<bool> {
     let resp = client
         .get_item()
         .table_name(db_name)

@@ -12,10 +12,7 @@ use lambda_runtime::tracing;
 use reqwest::Client as HttpClient;
 use serde::Deserialize;
 
-use crate::{
-    ClientHandler,
-    selector::{Card, ImageUri},
-};
+use crate::{ClientHandler, selector::DisplayCard};
 
 #[derive(Deserialize)]
 struct BSkyCredentials {
@@ -26,7 +23,7 @@ struct BSkyCredentials {
     password: String,
 }
 
-pub async fn post(clients: &ClientHandler, card: Card) -> Result<()> {
+pub async fn post(clients: &ClientHandler, card: DisplayCard) -> Result<()> {
     let text = RichText::new_with_detect_facets(card.text()).await?;
     let BSkyCredentials { username, password } =
         load_bsky_credentials(&clients.secrets_manager).await?;
@@ -36,6 +33,7 @@ pub async fn post(clients: &ClientHandler, card: Card) -> Result<()> {
     tracing::info!("logged into bsky successfully");
     let img_embed = create_image_embed(&agent, &clients.http, &card).await?;
     post_to_bluesky(agent, img_embed, text).await?;
+
     Ok(())
 }
 
@@ -57,9 +55,9 @@ async fn load_bsky_credentials(client: &SecretsManagerClient) -> Result<BSkyCred
 async fn create_image_embed(
     agent: &BskyAgent,
     client: &HttpClient,
-    card: &Card,
+    card: &DisplayCard,
 ) -> Result<ImageData> {
-    let ImageUri::ArtCrop(url) = &card.image_uris;
+    let url = card.art_crop.clone();
     let image = client.get(url).send().await?.bytes().await?;
     let upload_response = agent
         .api
