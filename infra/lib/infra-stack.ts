@@ -121,7 +121,7 @@ export class InfraStack extends cdk.Stack {
         BUCKET_KEY: 'scryfall-oracle-cards.json',
         DB_NAME: 'scryfall-duplicate-checker',
       },
-      memorySize: 256,
+      memorySize: 512,
       functionName: 'bsky-poster-fn',
       timeout: cdk.Duration.seconds(30)
     });
