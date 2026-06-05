@@ -1,4 +1,5 @@
 use crate::ClientHandler;
+use std::sync::Arc;
 
 use anyhow::Result;
 use aws_sdk_dynamodb::Client as DynamoClient;
@@ -73,7 +74,7 @@ impl std::fmt::Display for DisplayCard {
     }
 }
 
-pub async fn select_card(clients: &ClientHandler) -> Result<DisplayCard> {
+pub async fn select_card(clients: Arc<ClientHandler>) -> Result<DisplayCard> {
     let cards = download_card_data(&clients.s3).await?;
     tracing::info!("successfully retrieved card dataset");
     let card = select_appropriate_card(&cards, &clients.dynamo).await?;
@@ -82,10 +83,7 @@ pub async fn select_card(clients: &ClientHandler) -> Result<DisplayCard> {
     Ok(card)
 }
 
-async fn select_appropriate_card<'a>(
-    cards: &'a [Card],
-    client: &DynamoClient,
-) -> Result<DisplayCard> {
+async fn select_appropriate_card(cards: &[Card], client: &DynamoClient) -> Result<DisplayCard> {
     let mut card = retrieve_card(cards, client).await?;
     let mut text = card.text();
 
@@ -107,7 +105,7 @@ async fn download_card_data(client: &S3Client) -> Result<Vec<Card>> {
     Ok(serde_json::from_slice(&stream)?)
 }
 
-async fn retrieve_card<'a>(cards: &'a [Card], client: &DynamoClient) -> Result<DisplayCard> {
+async fn retrieve_card(cards: &[Card], client: &DynamoClient) -> Result<DisplayCard> {
     let db_name = std::env::var("DB_NAME")?;
     let total_cards = cards.len();
     let mut idx: usize = rand::random_range(0..total_cards);

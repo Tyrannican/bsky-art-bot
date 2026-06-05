@@ -34,7 +34,7 @@ pub async fn download() -> Result<Vec<Card>> {
 
     tracing::info!("downloaded card data");
     let cards_len = cards.len();
-    let filtered_cards: Vec<Card> = cards.into_iter().filter(|c| !is_invalid(&c)).collect();
+    let filtered_cards: Vec<Card> = cards.into_iter().filter(|c| !is_invalid(c)).collect();
     tracing::info!(
         "downloaded cards :: {} oracle cards :: {} unique cards",
         cards_len,

@@ -1,4 +1,4 @@
-use std::sync::OnceLock;
+use std::sync::Arc;
 
 use anyhow::Result;
 use aws_config::BehaviorVersion;
@@ -30,12 +30,11 @@ impl ClientHandler {
     }
 }
 
-static CLIENTS: OnceLock<ClientHandler> = OnceLock::new();
-
-async fn handler(_event: LambdaEvent<serde_json::Value>) -> Result<(), Error> {
-    let config = aws_config::load_defaults(BehaviorVersion::v2025_08_07()).await;
-    let clients = CLIENTS.get_or_init(|| ClientHandler::new(&config));
-    let card = selector::select_card(clients).await?;
+async fn handler(
+    _event: LambdaEvent<serde_json::Value>,
+    clients: Arc<ClientHandler>,
+) -> Result<(), Error> {
+    let card = selector::select_card(Arc::clone(&clients)).await?;
     bsky::post(clients, card).await?;
     tracing::info!("successfully sent post");
     Ok(())
@@ -43,8 +42,13 @@ async fn handler(_event: LambdaEvent<serde_json::Value>) -> Result<(), Error> {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    tracing::init_default_subscriber();
-    run(service_fn(handler)).await?;
+    let config = aws_config::load_defaults(BehaviorVersion::latest()).await;
+    let clients = Arc::new(ClientHandler::new(&config));
 
-    Ok(())
+    tracing::init_default_subscriber();
+    run(service_fn(move |event| {
+        let clients = Arc::clone(&clients);
+        async move { handler(event, clients).await }
+    }))
+    .await
 }

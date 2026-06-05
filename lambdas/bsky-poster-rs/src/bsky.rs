@@ -11,6 +11,7 @@ use bsky_sdk::{BskyAgent, rich_text::RichText};
 use lambda_runtime::tracing;
 use reqwest::Client as HttpClient;
 use serde::Deserialize;
+use std::sync::Arc;
 
 use crate::{ClientHandler, selector::DisplayCard};
 
@@ -23,7 +24,7 @@ struct BSkyCredentials {
     password: String,
 }
 
-pub async fn post(clients: &ClientHandler, card: DisplayCard) -> Result<()> {
+pub async fn post(clients: Arc<ClientHandler>, card: DisplayCard) -> Result<()> {
     let text = RichText::new_with_detect_facets(card.text()).await?;
     let BSkyCredentials { username, password } =
         load_bsky_credentials(&clients.secrets_manager).await?;
