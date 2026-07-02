@@ -705,7 +705,7 @@ dependencies = [
  "openssl",
  "rand",
  "reqwest 0.12.28",
- "scryone",
+ "scryone 0.1.1",
  "serde",
  "serde_json",
  "tokio",
@@ -1047,9 +1047,10 @@ dependencies = [
  "aws-config",
  "aws-sdk-s3",
  "aws-types",
+ "flate2",
  "lambda_runtime 0.13.0",
  "openssl",
- "scryone",
+ "scryone 0.2.0",
  "serde_json",
  "tokio",
 ]
@@ -1209,9 +1210,9 @@ checksum = "645cbb3a84e60b7531617d5ae4e57f7e27308f6445f5abf653209ea76dec8dff"
 
 [[package]]
 name = "flate2"
-version = "1.1.5"
+version = "1.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfe33edd8e85a12a67454e37f8c75e730830d83e313556ab9ebf9ee7fbeb3bfb"
+checksum = "843fba2746e448b37e26a819579957415c8cef339bf08564fe8b7ddbd959573c"
 dependencies = [
  "crc32fast",
  "miniz_oxide",
@@ -2956,6 +2957,21 @@ name = "scryone"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5989fe91b72da3c136c496cf69ed66376f2cdc087d178d7596c8bc2f2d4e24a"
+dependencies = [
+ "jiff",
+ "reqwest 0.13.4",
+ "serde",
+ "thiserror 2.0.18",
+ "tokio",
+ "url",
+ "uuid",
+]
+
+[[package]]
+name = "scryone"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8d8b609b4f640f2890cff71c3775eda1a45fd851bf678c1be8ebe6ddc08f378"
 dependencies = [
  "jiff",
  "reqwest 0.13.4",

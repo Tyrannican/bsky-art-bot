@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use lambda_runtime::tracing;
 
+use flate2::read::GzDecoder;
 use scryone::{
     api::{
         request::{BulkDataFromIdRequest, BulkDataId},
@@ -8,6 +9,7 @@ use scryone::{
     },
     objects::{BulkDataType, Card},
 };
+use std::io::Read;
 
 fn is_invalid(card: &Card) -> bool {
     card.content_warning.is_some()
@@ -27,12 +29,30 @@ pub async fn download() -> Result<Vec<Card>> {
     let result = client.get(req).await.context("retrieving bulk metadata")?;
     tracing::info!("download bulk metadata");
 
-    let cards: Vec<Card> = client
-        .call(result.download_uri)
+    let bulk_response = client
+        .call_raw(result.jsonl_download_uri)
         .await
-        .context("downloading bulk card data")?;
+        .context("downloading gzipped bulk data")?;
 
-    tracing::info!("downloaded card data");
+    tracing::info!("downloaded gzipped card data");
+    let mut raw_cards = Vec::new();
+    let mut decoder = GzDecoder::new(&bulk_response[..]);
+    decoder
+        .read_to_end(&mut raw_cards)
+        .context("decoding gzipped data")?;
+
+    let cards: Vec<Card> = raw_cards
+        .split(|b| *b == b'\n')
+        .filter_map(|arr| {
+            if arr.is_empty() {
+                return None;
+            }
+
+            Some(serde_json::from_slice(arr).expect("card should be valid"))
+        })
+        .collect();
+
+    tracing::info!("decompressed card data");
     let cards_len = cards.len();
     let filtered_cards: Vec<Card> = cards.into_iter().filter(|c| !is_invalid(c)).collect();
     tracing::info!(
