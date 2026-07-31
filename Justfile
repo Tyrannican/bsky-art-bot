@@ -15,7 +15,7 @@ build-lambdas:
     zip ../dist/scryfall-datafetcher.zip bootstrap
     rm bootstrap
     mv build/lambda/bsky-poster-rs/bootstrap .
-    zip ../dist/bsky-poster.zip bootstrap
+    zip -9 ../dist/bsky-poster.zip bootstrap
     rm -r build bootstrap
 
 # Deploy the infrastructure to AWS
