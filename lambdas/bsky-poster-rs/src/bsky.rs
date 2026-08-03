@@ -67,12 +67,15 @@ async fn load_bsky_credentials(client: &SecretsManagerClient) -> Result<BSkyCred
 async fn initialise_agent(client: &SecretsManagerClient) -> Result<Agent<SessionType>> {
     let BSkyCredentials { username, password } = load_bsky_credentials(client).await?;
 
+    let resolver_client = HttpClient::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .connect_timeout(std::time::Duration::from_secs(10))
+        .build()?;
+
     let store = Arc::new(MemorySessionStore::default());
-    let resolver = Arc::new(JacquardResolver::new(
-        reqwest::Client::new(),
-        Default::default(),
-    ));
+    let resolver = Arc::new(JacquardResolver::new(resolver_client, Default::default()));
     let session = CredentialSession::new(store, resolver);
+    tracing::info!("logging into bluesky");
     if let Err(e) = session
         .login(&username, &password, None, None, None, None)
         .await

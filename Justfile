@@ -12,7 +12,7 @@ build-lambdas:
     mkdir -p build
     CARGO_TARGET_DIR=./build cargo lambda build --workspace --release --arm64
     mv build/lambda/datafetcher/bootstrap .
-    zip ../dist/scryfall-datafetcher.zip bootstrap
+    zip -9 ../dist/scryfall-datafetcher.zip bootstrap
     rm bootstrap
     mv build/lambda/bsky-poster-rs/bootstrap .
     zip -9 ../dist/bsky-poster.zip bootstrap

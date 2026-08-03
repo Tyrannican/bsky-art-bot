@@ -827,7 +827,7 @@ dependencies = [
  "openssl",
  "rand 0.9.4",
  "reqwest 0.12.28",
- "scryone 0.1.1",
+ "scryone",
  "serde",
  "serde_json",
  "smol_str",
@@ -1286,7 +1286,7 @@ dependencies = [
  "flate2",
  "lambda_runtime 0.13.0",
  "openssl",
- "scryone 0.2.1",
+ "scryone",
  "serde_json",
  "tokio",
 ]
@@ -4198,24 +4198,9 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
 name = "scryone"
-version = "0.1.1"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5989fe91b72da3c136c496cf69ed66376f2cdc087d178d7596c8bc2f2d4e24a"
-dependencies = [
- "jiff",
- "reqwest 0.13.4",
- "serde",
- "thiserror 2.0.18",
- "tokio",
- "url",
- "uuid",
-]
-
-[[package]]
-name = "scryone"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c29e8a1ffcd1f97016accb9222f210ef943c24589b45222e684ea5da4b946807"
+checksum = "a0c8f59613192c55e408e74383a7b173c5468af9d689f87690aec247d3c55be4"
 dependencies = [
  "jiff",
  "reqwest 0.13.4",

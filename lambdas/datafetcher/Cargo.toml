@@ -11,6 +11,6 @@ aws-types = "1.3.3"
 flate2 = "1.1.9"
 lambda_runtime = "0.13.0"
 openssl = { version = "0.10.68", features = ["vendored"] }
-scryone = "0.2.0"
+scryone = "0.2.3"
 serde_json = "1.0.140"
 tokio = { version = "1.42.0", features = ["full"] }
