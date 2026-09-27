@@ -4212,9 +4212,9 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
 name = "scryone"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0c8f59613192c55e408e74383a7b173c5468af9d689f87690aec247d3c55be4"
+checksum = "49034bf2141f183ebe8928f837e265dada28f42c4820b4b2184aa9500fdc715b"
 dependencies = [
  "jiff",
  "reqwest 0.13.4",
