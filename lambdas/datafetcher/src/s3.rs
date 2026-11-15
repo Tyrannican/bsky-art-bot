@@ -1,10 +1,11 @@
 use anyhow::{Context, Result};
+use aws_config::BehaviorVersion;
 use aws_sdk_s3::{primitives::ByteStream, Client};
 
 use scryone::objects::Card;
 
 async fn load_client() -> Client {
-    let config = aws_config::load_from_env().await;
+    let config = aws_config::load_defaults(BehaviorVersion::latest()).await;
     Client::new(&config)
 }
 

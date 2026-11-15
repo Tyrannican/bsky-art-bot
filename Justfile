@@ -14,6 +14,9 @@ build-lambdas:
     mv build/lambda/datafetcher/bootstrap .
     zip -9 ../dist/scryfall-datafetcher.zip bootstrap
     rm bootstrap
+    mv build/lambda/datafetcher-processor/bootstrap .
+    zip -9 ../dist/scryfall-datafetcher-processor.zip bootstrap
+    rm bootstrap
     mv build/lambda/bsky-poster-rs/bootstrap .
     zip -9 ../dist/bsky-poster.zip bootstrap
     rm -r build bootstrap
