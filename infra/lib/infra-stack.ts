@@ -4,13 +4,18 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as event from 'aws-cdk-lib/aws-events';
 import * as dynamo from 'aws-cdk-lib/aws-dynamodb';
+import * as sqs from 'aws-cdk-lib/aws-sqs';
+import * as path from 'path';
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
-import path = require('path');
+import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 
 export class InfraStack extends cdk.Stack {
+  private processorQueue: sqs.IQueue;
+
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
     this.createDynamoDb();
+    this.processorQueue = this.createProcessorQueue();
     this.createDataFetcherLambda();
     this.createPosterLambda();
   }
@@ -31,6 +36,59 @@ export class InfraStack extends cdk.Stack {
     });
   }
 
+  createProcessorQueue() {
+    const dlq = new sqs.Queue(this, 'ScryfallDataFetcherProcessorDeadLetterQueue', {
+      queueName: 'scryfall-data-fetcher-processor-dlq',
+      retentionPeriod: cdk.Duration.days(14),
+    });
+
+    return new sqs.Queue(this, 'ScryfallDataFetcherProcessorQueue', {
+      queueName: 'scryfall-data-fetcher-processor-queue',
+      visibilityTimeout: cdk.Duration.minutes(1),
+      deadLetterQueue: {
+        queue: dlq,
+        maxReceiveCount: 5
+      },
+    });
+  }
+
+  createDataFetcherProcessorLambda() {
+    const processorRole = new iam.Role(this, 'ScryfallDataFetcherProcessorRole', {
+      roleName: 'scryfall-data-fetcher-processor-role',
+      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+    });
+
+    processorRole.addToPolicy(new iam.PolicyStatement({
+      resources: ['*'],
+      actions: [
+        's3:PutObject',
+        's3:GetObject',
+        'logs:CreateLogGroup',
+        'logs:CreateLogStream',
+        'logs:PutLogEvents',
+        'cloudwatch:*',
+      ],
+      effect: iam.Effect.ALLOW
+    }));
+
+    const fn = new lambda.Function(this, 'ScryfallDataFetcherLambda', {
+      runtime: lambda.Runtime.PROVIDED_AL2023,
+      architecture: lambda.Architecture.ARM_64,
+      handler: 'bootstrap',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../dist/scryfall-datafetcher-processor.zip')),
+      memorySize: 256,
+      reservedConcurrentExecutions: 100,
+      role: processorRole,
+      functionName: 'scryfall-data-fetcher-processor-fn',
+      timeout: cdk.Duration.seconds(30)
+    });
+
+    fn.addEventSource(new SqsEventSource(this.processorQueue, {
+      batchSize: 10,
+      reportBatchItemFailures: true,
+    }));
+  }
+
   createDataFetcherLambda() {
     const fetcherRole = new iam.Role(this, 'ScryfallDataFetcherRole', {
       roleName: 'scryfall-data-fetcher-role',
@@ -47,6 +105,12 @@ export class InfraStack extends cdk.Stack {
         'cloudwatch:*',
       ],
       effect: iam.Effect.ALLOW
+    }));
+
+    fetcherRole.addToPolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ['sqs:SendMessage'],
+      resources: [this.processorQueue.queueArn]
     }));
 
     const fetcherScheduleRule = new event.Rule(this, 'ScryfallDataFetcherScheduleRule', {
