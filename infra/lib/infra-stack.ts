@@ -134,6 +134,9 @@ export class InfraStack extends cdk.Stack {
       handler: 'bootstrap',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../dist/scryfall-datafetcher.zip')),
       memorySize: 1024,
+      environment: {
+        PROCESSOR_QUEUE_URL: this.processorQueue.queueUrl,
+      }
       role: fetcherRole,
       functionName: 'scryfall-data-fetcher-fn',
       timeout: cdk.Duration.seconds(30)

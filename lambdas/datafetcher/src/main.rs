@@ -1,20 +1,19 @@
 use anyhow::Context;
 use lambda_runtime::{Error, LambdaEvent, run, service_fn, tracing};
 
-mod s3;
 mod scryfall;
+mod sqs;
 
 async fn handler(_event: LambdaEvent<serde_json::Value>) -> Result<(), Error> {
     let cards = scryfall::download()
         .await
         .context("downloading card data")?;
 
-    // Batch and send the cards to the Processor Queue
-    s3::upload_cards(cards)
+    sqs::send_to_processor(cards)
         .await
-        .context("uploading card data to aws")?;
+        .context("sending cards to processor queue")?;
 
-    tracing::info!("uploaded cards to S3");
+    tracing::info!("sent all cards to processor queue");
 
     Ok(())
 }

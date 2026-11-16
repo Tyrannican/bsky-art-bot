@@ -17,7 +17,7 @@ async fn process_record(record: SqsMessage, bucket: &str, s3: Arc<S3Client>) -> 
     };
 
     let card: Card = serde_json::from_str(&body).context("deserialising card body")?;
-    let key = format!("{}.json", card.id);
+    let key = format!("scryfall/{}.json", card.id);
 
     match s3
         .put_object()
