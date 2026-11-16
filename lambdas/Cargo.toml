@@ -27,6 +27,7 @@ reqwest = "0.12.23"
 smol_str = "0.3.6"
 futures = "0.3.34"
 url = "2.5.8"
+uuid = { version = "1.29.2", features = ["v4", "serde"] }
 
 [profile.release]
 strip = true

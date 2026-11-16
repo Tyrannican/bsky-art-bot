@@ -136,7 +136,8 @@ export class InfraStack extends cdk.Stack {
       memorySize: 1024,
       environment: {
         PROCESSOR_QUEUE_URL: this.processorQueue.queueUrl,
-      }
+        BUCKET: 'muspelheim',
+      },
       role: fetcherRole,
       functionName: 'scryfall-data-fetcher-fn',
       timeout: cdk.Duration.seconds(30)
