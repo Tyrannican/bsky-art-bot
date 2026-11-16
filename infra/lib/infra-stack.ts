@@ -79,6 +79,9 @@ export class InfraStack extends cdk.Stack {
       memorySize: 256,
       reservedConcurrentExecutions: 100,
       role: processorRole,
+      environment: {
+        BUCKET: 'muspelheim',
+      },
       functionName: 'scryfall-data-fetcher-processor-fn',
       timeout: cdk.Duration.seconds(30)
     });
