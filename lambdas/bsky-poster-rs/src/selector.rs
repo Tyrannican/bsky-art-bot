@@ -9,6 +9,7 @@ use lambda_runtime::tracing;
 use scryone::objects::Card;
 use serde::Deserialize;
 use url::Url;
+use uuid::Uuid;
 
 // Number of times to check if cards have been posted
 // If above this number, post regardless
@@ -16,6 +17,7 @@ const CHECK_ITERATIONS: usize = 5;
 
 #[derive(Clone, Deserialize)]
 pub struct DisplayCard {
+    id: Uuid,
     pub name: String,
     pub art_crop: Url,
     pub set_name: String,
@@ -41,6 +43,7 @@ impl DisplayCard {
             .expect("image uris should be present due to filters");
 
         Self {
+            id: card.id,
             name: card.name.clone(),
             set_name: card.set_name.clone(),
             flavor_text: flavor_text.to_string(),
@@ -75,27 +78,30 @@ impl std::fmt::Display for DisplayCard {
 }
 
 pub async fn select_card(clients: Arc<ClientHandler>) -> Result<DisplayCard> {
-    let cards = download_card_data(&clients.s3).await?;
-    tracing::info!("successfully retrieved card dataset");
-    let card = select_appropriate_card(&cards, &clients.dynamo).await?;
+    let cards_ids = download_card_data(&clients.s3).await?;
+    tracing::info!("successfully retrieved card id dataset");
+    let card = select_appropriate_card(&cards_ids, clients).await?;
     tracing::info!("selected card - {card}");
 
     Ok(card)
 }
 
-async fn select_appropriate_card(cards: &[Card], client: &DynamoClient) -> Result<DisplayCard> {
-    let mut card = retrieve_card(cards, client).await?;
+async fn select_appropriate_card(
+    cards: &[Uuid],
+    clients: Arc<ClientHandler>,
+) -> Result<DisplayCard> {
+    let mut card = retrieve_card(cards, Arc::clone(&clients)).await?;
     let mut text = card.text();
 
     while text.len() > 300 {
-        card = retrieve_card(cards, client).await?;
+        card = retrieve_card(cards, Arc::clone(&clients)).await?;
         text = card.text();
     }
 
     Ok(card)
 }
 
-async fn download_card_data(client: &S3Client) -> Result<Vec<Card>> {
+async fn download_card_data(client: &S3Client) -> Result<Vec<Uuid>> {
     let bucket = std::env::var("BUCKET")?;
     let key = std::env::var("BUCKET_KEY")?;
 
@@ -105,16 +111,16 @@ async fn download_card_data(client: &S3Client) -> Result<Vec<Card>> {
     Ok(serde_json::from_slice(&stream)?)
 }
 
-async fn retrieve_card(cards: &[Card], client: &DynamoClient) -> Result<DisplayCard> {
+async fn retrieve_card(card_ids: &[Uuid], client: Arc<ClientHandler>) -> Result<DisplayCard> {
     let db_name = std::env::var("DB_NAME")?;
-    let total_cards = cards.len();
+    let total_cards = card_ids.len();
     let mut idx: usize = rand::random_range(0..total_cards);
-    let mut card = DisplayCard::from_scryfall_card(&cards[idx]);
+    let mut card = fetch_card_from_s3(card_ids[idx], &client.s3).await?;
 
     for _ in 0..CHECK_ITERATIONS {
-        if posted_before(&db_name, &card, client).await? {
+        if posted_before(&db_name, &card, &client.dynamo).await? {
             idx = rand::random_range(0..total_cards);
-            card = DisplayCard::from_scryfall_card(&cards[idx]);
+            card = fetch_card_from_s3(card_ids[idx], &client.s3).await?;
         } else {
             break;
         }
@@ -123,26 +129,38 @@ async fn retrieve_card(cards: &[Card], client: &DynamoClient) -> Result<DisplayC
     Ok(card)
 }
 
-async fn posted_before(db_name: &str, card: &DisplayCard, client: &DynamoClient) -> Result<bool> {
-    let resp = client
-        .get_item()
-        .table_name(db_name)
-        .key("name", AttributeValue::S(card.name.to_owned()))
-        .key("set", AttributeValue::S(card.set_name.to_owned()))
+async fn fetch_card_from_s3(id: Uuid, client: &S3Client) -> Result<DisplayCard> {
+    let bucket = std::env::var("BUCKET")?;
+    let card_data = client
+        .get_object()
+        .bucket(bucket)
+        .key(format!("scryfall/{id}.json"))
         .send()
         .await?;
 
-    if resp.item().is_some() {
-        return Ok(true);
-    }
+    let stream = card_data.body.collect().await?.into_bytes();
+    let card: Card = serde_json::from_slice(&stream)?;
 
-    client
+    Ok(DisplayCard::from_scryfall_card(&card))
+}
+
+async fn posted_before(db_name: &str, card: &DisplayCard, client: &DynamoClient) -> Result<bool> {
+    match client
         .put_item()
         .table_name(db_name)
-        .item("name", AttributeValue::S(card.name.to_owned()))
-        .item("set", AttributeValue::S(card.set_name.to_owned()))
+        .item("id", AttributeValue::S(card.id.into()))
+        .condition_expression("attribute_not_exists(id)")
         .send()
-        .await?;
-
-    Ok(false)
+        .await
+    {
+        Ok(_) => Ok(false),
+        Err(e) => {
+            let err = e.into_service_error();
+            if err.is_conditional_check_failed_exception() {
+                Ok(true)
+            } else {
+                Err(err.into())
+            }
+        }
+    }
 }

@@ -12,7 +12,7 @@ pub async fn send_ids(ids: Vec<Uuid>) -> Result<()> {
     client
         .put_object()
         .bucket(bucket)
-        .key("scryfall/card_ids.json")
+        .key("scryfall/oracle-card-ids.json")
         .body(ByteStream::from(body.into_bytes()))
         .send()
         .await?;

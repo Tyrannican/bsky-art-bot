@@ -21,3 +21,4 @@ serde_json.workspace = true
 smol_str.workspace = true
 tokio.workspace = true
 url.workspace = true
+uuid.workspace = true

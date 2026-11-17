@@ -17,6 +17,7 @@ export class InfraStack extends cdk.Stack {
     this.createDynamoDb();
     this.processorQueue = this.createProcessorQueue();
     this.createDataFetcherLambda();
+    this.createDataFetcherProcessorLambda();
     this.createPosterLambda();
   }
 
@@ -24,11 +25,7 @@ export class InfraStack extends cdk.Stack {
     new dynamo.TableV2(this, 'ScryfallDuplicateChecker', {
       tableName: 'scryfall-duplicate-checker',
       partitionKey: {
-        name: 'name',
-        type: dynamo.AttributeType.STRING
-      },
-      sortKey: {
-        name: 'set',
+        name: 'id',
         type: dynamo.AttributeType.STRING
       },
       billing: dynamo.Billing.onDemand(),
@@ -71,7 +68,7 @@ export class InfraStack extends cdk.Stack {
       effect: iam.Effect.ALLOW
     }));
 
-    const fn = new lambda.Function(this, 'ScryfallDataFetcherLambda', {
+    const fn = new lambda.Function(this, 'ScryfallDataFetcherProcessorLambda', {
       runtime: lambda.Runtime.PROVIDED_AL2023,
       architecture: lambda.Architecture.ARM_64,
       handler: 'bootstrap',
@@ -189,7 +186,7 @@ export class InfraStack extends cdk.Stack {
       role: posterRole,
       environment: {
         BUCKET: 'muspelheim',
-        BUCKET_KEY: 'scryfall-oracle-cards.json',
+        BUCKET_KEY: 'scryfall/oracle-card-ids.json',
         DB_NAME: 'scryfall-duplicate-checker',
       },
       memorySize: 1024,
